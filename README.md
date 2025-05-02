@@ -1,13 +1,13 @@
-# domain-info-fetcher
+# @xyz/whois
 
-[![Build](https://img.shields.io/github/actions/workflow/status/marcelbaklouti/domain-info-fetcher/release.yml)](https://github.com/marcelbaklouti/domain-info-fetcher/actions)
-[![npm](https://img.shields.io/npm/v/domain-info-fetcher.svg)](https://www.npmjs.com/package/domain-info-fetcher)
-[![GitHub release](https://img.shields.io/github/release/marcelbaklouti/domain-info-fetcher.svg)](https://github.com/marcelbaklouti/domain-info-fetcher/releases/latest)
-[![License](https://img.shields.io/github/license/marcelbaklouti/domain-info-fetcher.svg)](https://github.com/marcelbaklouti/domain-info-fetcher/blob/main/LICENCE)
-[![Known Vulnerabilities](https://snyk.io/test/github/marcelbaklouti/domain-info-fetcher/badge.svg)](https://snyk.io/test/github/marcelbaklouti/domain-info-fetcher)
-[![GitHub issues](https://img.shields.io/github/issues/marcelbaklouti/domain-info-fetcher.svg)](https://github.com/marcelbaklouti/domain-info-fetcher/issues)
+[![Build](https://img.shields.io/github/actions/workflow/status/xyzhub/whois/release.yml)](https://github.com/xyzhub/whois/actions)
+[![npm](https://img.shields.io/npm/v/@xyz/whois.svg)](https://www.npmjs.com/package/@xyz/whois)
+[![GitHub release](https://img.shields.io/github/release/xyzhub/whois.svg)](https://github.com/xyzhub/whois/releases/latest)
+[![License](https://img.shields.io/github/license/xyzhub/whois.svg)](https://github.com/xyzhub/whois/blob/main/LICENCE)
+[![Known Vulnerabilities](https://snyk.io/test/github/xyzhub/whois/badge.svg)](https://snyk.io/test/github/xyzhub/whois)
+[![GitHub issues](https://img.shields.io/github/issues/xyzhub/whois.svg)](https://github.com/xyzhub/whois/issues)
 
-A comprehensive domain analysis tool for Node.js that provides detailed information about any domain or subdomain. Features rich WHOIS data (including registration dates, expiration monitoring, registrar details, and domain status), SSL/TLS certificate analysis, DNS records, and server information. The intuitive CLI with colorized output makes domain analysis accessible to everyone.
+A powerful TypeScript/JavaScript tool for comprehensive domain analysis, featuring detailed WHOIS data with registration dates, registrars, and domain status. Offers SSL certificate extraction (with PEM support), DNS records, and server details. Includes a feature-rich CLI with colorized output, full TypeScript support, and flexible data export options. Perfect for domain monitoring, security analysis, and compliance checks.
 
 ## Table of Contents
 
@@ -56,19 +56,19 @@ Install with your preferred package manager:
 
 ```bash
 # npm
-npm install domain-info-fetcher
+npm install @xyz/whois
 
 # yarn
-yarn add domain-info-fetcher
+yarn add @xyz/whois
 
 # pnpm
-pnpm add domain-info-fetcher
+pnpm add @xyz/whois
 ```
 
 ## Quick Start
 
 ```typescript
-import { fetchDomainInfo } from "domain-info-fetcher";
+import { fetchDomainInfo } from "@xyz/whois";
 
 // Async/Await syntax
 async function checkDomain() {
@@ -128,7 +128,7 @@ The package includes a feature-rich CLI for quick domain analysis from the termi
 
 ```bash
 # Install globally
-npm install -g domain-info-fetcher
+npm install -g @xyz/whois
 
 # Run a quick domain check
 domain-info-fetcher example.com
@@ -303,7 +303,7 @@ import {
   fetchDomainInfo,
   extractSubdomain,
   getRootDomain,
-} from "domain-info-fetcher";
+} from "@xyz/whois";
 
 async function analyzeSubdomain() {
   const domain = "blog.example.com";
@@ -327,7 +327,7 @@ async function analyzeSubdomain() {
 Customize the request behavior with options:
 
 ```typescript
-import { fetchDomainInfo } from "domain-info-fetcher";
+import { fetchDomainInfo } from "@xyz/whois";
 
 const options = {
   timeout: 5000, // 5 second timeout
@@ -346,7 +346,7 @@ const info = await fetchDomainInfo("example.com", options);
 Check multiple domains in parallel:
 
 ```typescript
-import { fetchDomainInfo } from "domain-info-fetcher";
+import { fetchDomainInfo } from "@xyz/whois";
 
 async function checkMultipleDomains(domains: string[]) {
   const results = await Promise.allSettled(
@@ -378,7 +378,7 @@ checkMultipleDomains(["example.com", "github.com", "blog.medium.com"]);
 The package provides comprehensive WHOIS information for domains (added in v2.3.0):
 
 ```typescript
-import { fetchDomainInfo, WhoisData } from "domain-info-fetcher";
+import { fetchDomainInfo, WhoisData } from "@xyz/whois";
 
 async function analyzeWhoisData() {
   try {
@@ -510,7 +510,7 @@ The enhanced WHOIS data is particularly useful for:
 The package provides specific error messages for different failure scenarios with helpful suggestions for troubleshooting:
 
 ```typescript
-import { fetchDomainInfo } from "domain-info-fetcher";
+import { fetchDomainInfo } from "@xyz/whois";
 
 try {
   const info = await fetchDomainInfo("example.com");
@@ -558,8 +558,8 @@ The package includes ready-to-run examples:
 
 ```bash
 # Clone the repository
-git clone https://github.com/marcelbaklouti/domain-info-fetcher.git
-cd domain-info-fetcher
+git clone https://github.com/xyzhub/whois.git
+cd whois
 
 # Install dependencies
 npm install
@@ -571,18 +571,6 @@ npm run example:subdomain # Subdomain analysis
 npm run example:certificate # Certificate extraction
 npm run example:whois    # WHOIS data analysis with detailed output
 ```
-
-## Roadmap
-
-We have an ambitious roadmap for the future of domain-info-fetcher. The project is evolving to better serve both technical and non-technical users, with planned support for:
-
-### Upcoming Versions
-
-- ✅ **v2.3.0**: WHOIS data integration with comprehensive data extraction (Completed)
-- **v2.4.0**: Batch processing system for efficiently handling multiple domains
-- **v3.0.0**: Enhanced CLI and data export capabilities (JSON, CSV, tables)
-- **v3.1.0**: GitHub Pages web interface for non-technical users
-- **v3.2.0**: Dashboard support with specialized formatting and monitoring tools
 
 For detailed information about our development plans, implementation timeline, and how to contribute to specific features, please see our [ROADMAP.md](ROADMAP.md) document.
 
