@@ -1,7 +1,9 @@
-import * as https from "https";
-import { Socket } from "net";
-import * as dns from "dns";
-import { WhoisData } from "./src/whois";
+import * as https from 'https';
+import * as http from 'http';
+import { Socket } from 'net';
+import * as dns from 'dns';
+import { WhoisData } from './src/whois';
+import logger from './src/utils/logger';
 
 // Custom interface for the socket object
 interface CustomSocket extends Socket {
@@ -71,6 +73,7 @@ export interface RequestOptions {
   followRedirects?: boolean;
   /** Maximum number of redirects to follow */
   maxRedirects?: number;
+  debug?: boolean;
 }
 
 // Default request options
@@ -80,6 +83,21 @@ const DEFAULT_OPTIONS: RequestOptions = {
   maxRedirects: 5,
 };
 
+// Default SSL data structure
+const DEFAULT_SSL_DATA: SslData = {
+  subject: {},
+  issuer: {},
+  valid: false,
+  validFrom: 0,
+  validTo: 0,
+  details: {
+    subject: '',
+    issuer: 'No SSL Certificate',
+    validFrom: new Date(0),
+    validTo: new Date(0),
+  },
+};
+
 /**
  * Formats a given domain to `example.com` format.
  * @param domain The domain to format.
@@ -87,8 +105,8 @@ const DEFAULT_OPTIONS: RequestOptions = {
  */
 export function formatDomain(domain: string): string {
   return domain
-    .replace(/^(https?:\/\/)?(www\.)?/i, "")
-    .replace(/\/$/, "")
+    .replace(/^(https?:\/\/)?(www\.)?/i, '')
+    .replace(/\/$/, '')
     .toLowerCase();
 }
 
@@ -99,7 +117,7 @@ export function formatDomain(domain: string): string {
  */
 export function extractSubdomain(domain: string): string | null {
   const formattedDomain = formatDomain(domain);
-  const parts = formattedDomain.split(".");
+  const parts = formattedDomain.split('.');
 
   // Check if there are more than 2 parts (e.g., sub.example.com)
   if (parts.length > 2) {
@@ -116,11 +134,11 @@ export function extractSubdomain(domain: string): string | null {
  */
 export function getRootDomain(domain: string): string {
   const formattedDomain = formatDomain(domain);
-  const parts = formattedDomain.split(".");
+  const parts = formattedDomain.split('.');
 
   // If domain has more than 2 parts, return the last two (e.g., example.com from sub.example.com)
   if (parts.length > 2) {
-    return parts.slice(-2).join(".");
+    return parts.slice(-2).join('.');
   }
 
   return formattedDomain;
@@ -132,7 +150,7 @@ export function getRootDomain(domain: string): string {
  * @returns True if the domain is valid, false otherwise.
  */
 export const checkDomain = (domain: string): boolean => {
-  const domainParts = domain.split(".");
+  const domainParts = domain.split('.');
   return domainParts.length > 1 && domainParts[0].length > 0;
 };
 
@@ -156,33 +174,33 @@ function extractSslData(cert: CertificateData): SslData {
 
   // Extract human-readable subject and issuer information
   const subjectCN =
-    typeof cert.subject?.CN === "string"
+    typeof cert.subject?.CN === 'string'
       ? cert.subject.CN
-      : typeof cert.subject?.commonName === "string"
-      ? cert.subject.commonName
-      : Array.isArray(cert.subject?.CN)
-      ? cert.subject.CN.join(", ")
-      : Object.values(cert.subject || {})
-          .map((v) => (Array.isArray(v) ? v.join(", ") : v))
-          .join(", ");
+      : typeof cert.subject?.commonName === 'string'
+        ? cert.subject.commonName
+        : Array.isArray(cert.subject?.CN)
+          ? cert.subject.CN.join(', ')
+          : Object.values(cert.subject || {})
+              .map((v) => (Array.isArray(v) ? v.join(', ') : v))
+              .join(', ');
 
   // Prioritize Organization (O) for issuer information, falling back to CN if not available
   const issuerCN =
-    typeof cert.issuer?.O === "string"
+    typeof cert.issuer?.O === 'string'
       ? cert.issuer.O
-      : typeof cert.issuer?.organizationName === "string"
-      ? cert.issuer.organizationName
-      : typeof cert.issuer?.CN === "string"
-      ? cert.issuer.CN
-      : typeof cert.issuer?.commonName === "string"
-      ? cert.issuer.commonName
-      : Array.isArray(cert.issuer?.O)
-      ? cert.issuer.O.join(", ")
-      : Array.isArray(cert.issuer?.CN)
-      ? cert.issuer.CN.join(", ")
-      : Object.values(cert.issuer || {})
-          .map((v) => (Array.isArray(v) ? v.join(", ") : v))
-          .join(", ");
+      : typeof cert.issuer?.organizationName === 'string'
+        ? cert.issuer.organizationName
+        : typeof cert.issuer?.CN === 'string'
+          ? cert.issuer.CN
+          : typeof cert.issuer?.commonName === 'string'
+            ? cert.issuer.commonName
+            : Array.isArray(cert.issuer?.O)
+              ? cert.issuer.O.join(', ')
+              : Array.isArray(cert.issuer?.CN)
+                ? cert.issuer.CN.join(', ')
+                : Object.values(cert.issuer || {})
+                    .map((v) => (Array.isArray(v) ? v.join(', ') : v))
+                    .join(', ');
 
   // Extract certificates in PEM format if available
   let certificate: string | undefined = undefined;
@@ -193,9 +211,9 @@ function extractSslData(cert: CertificateData): SslData {
     // The main certificate PEM
     if (cert.raw) {
       certificate = `-----BEGIN CERTIFICATE-----\n${cert.raw
-        .toString("base64")
+        .toString('base64')
         .match(/.{1,64}/g)
-        ?.join("\n")}\n-----END CERTIFICATE-----`;
+        ?.join('\n')}\n-----END CERTIFICATE-----`;
     }
 
     // Try to extract intermediate and root certificates if available
@@ -203,20 +221,17 @@ function extractSslData(cert: CertificateData): SslData {
       const intermediate = cert.issuerCertificate;
       if (intermediate.raw) {
         intermediateCertificate = `-----BEGIN CERTIFICATE-----\n${intermediate.raw
-          .toString("base64")
+          .toString('base64')
           .match(/.{1,64}/g)
-          ?.join("\n")}\n-----END CERTIFICATE-----`;
+          ?.join('\n')}\n-----END CERTIFICATE-----`;
       }
 
       // Root certificate (if chain available)
-      if (
-        intermediate.issuerCertificate &&
-        intermediate.issuerCertificate.raw
-      ) {
+      if (intermediate.issuerCertificate && intermediate.issuerCertificate.raw) {
         rootCertificate = `-----BEGIN CERTIFICATE-----\n${intermediate.issuerCertificate.raw
-          .toString("base64")
+          .toString('base64')
           .match(/.{1,64}/g)
-          ?.join("\n")}\n-----END CERTIFICATE-----`;
+          ?.join('\n')}\n-----END CERTIFICATE-----`;
       }
     }
   } catch {
@@ -249,6 +264,18 @@ function extractSslData(cert: CertificateData): SslData {
 }
 
 /**
+ * Validates a domain name and throws an appropriate error if invalid
+ */
+function validateDomain(domain: string): void {
+  if (!domain) {
+    throw new Error('Domain name cannot be empty');
+  }
+  if (!checkDomain(domain)) {
+    throw new Error('Invalid domain name format');
+  }
+}
+
+/**
  * Fetches SSL, server, and DNS data for the given domain.
  * @param domain The domain to fetch the information for.
  * @param options Optional request configuration
@@ -256,91 +283,74 @@ function extractSslData(cert: CertificateData): SslData {
  */
 export async function fetchDomainInfo(
   domain: string,
-  options?: RequestOptions
+  options: RequestOptions = {}
 ): Promise<DomainInfo | undefined> {
-  if (!domain) {
-    throw new Error("Domain name cannot be empty");
-  }
-
-  if (!checkDomain(domain)) {
-    throw new Error("Invalid domain name format");
-  }
-
+  const { debug = false } = options;
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
+
+  validateDomain(domain);
   const formattedDomain = formatDomain(domain);
 
-  // Include WHOIS data in the Promise.all array
-  const [
-    sslData,
-    serverData,
-    dnsData,
-    httpStatus,
-    whoisData,
-  ] = await Promise.all([
-    getSslData(formattedDomain, mergedOptions).catch((error) => {
-      // Enhance error message with more specific details
-      let errorMessage = "Could not fetch SSL data for domain " + domain;
+  try {
+    // Initialize result object with default values
+    const result: DomainInfo = {
+      sslData: {
+        ...DEFAULT_SSL_DATA,
+        details: {
+          ...DEFAULT_SSL_DATA.details,
+          subject: formattedDomain,
+          issuer: 'No SSL Certificate',
+          validFrom: new Date(0),
+          validTo: new Date(0),
+        },
+      },
+      serverData: undefined,
+      dnsData: undefined,
+      httpStatus: undefined,
+      whoisData: undefined,
+    };
 
-      if (error.code) {
-        errorMessage += ". Error code: " + error.code;
-      }
-
-      if (error.message) {
-        errorMessage += ". Details: " + error.message;
-      }
-
-      throw new Error(errorMessage);
-    }),
-    getServerData(formattedDomain, mergedOptions).catch((error) => {
-      // Enhance error message with more specific details
-      let errorMessage = "Could not fetch server data for domain " + domain;
-
-      if (error.code) {
-        errorMessage += ". Error code: " + error.code;
-      }
-
-      if (error.message) {
-        errorMessage += ". Details: " + error.message;
-      }
-
-      throw new Error(errorMessage);
-    }),
-    getDnsData(formattedDomain).catch((error) => {
-      // Enhance error message with more specific details
-      let errorMessage = "Could not fetch DNS data for domain " + domain;
-
-      if (error.code) {
-        errorMessage += ". Error code: " + error.code;
-      }
-
-      if (error.message) {
-        errorMessage += ". Details: " + error.message;
-      }
-
-      throw new Error(errorMessage);
-    }),
-    getHttpStatus(formattedDomain, mergedOptions),
-    // Add WHOIS data fetch, but make it optional
-    import("./src/whois")
-      .then((whoisModule) =>
-        whoisModule.getWhoisData(formattedDomain).catch((error) => {
-          // Log the error but don't fail the whole request
-          console.warn(`WHOIS data fetch failed: ${error.message}`);
+    // Fetch WHOIS data first since it's most reliable
+    logger.logInfo(debug, 'Getting WHOIS data', `for domain: ${formattedDomain}`);
+    try {
+      result.whoisData = await import('./src/whois')
+        .then((whoisModule) => whoisModule.getWhoisData(formattedDomain, true, 3, debug))
+        .catch((error) => {
+          logger.logWarning(debug, 'WHOIS data fetch', error.message);
           return undefined;
-        })
-      )
-      .catch(() => undefined), // Make WHOIS data optional
-  ]);
+        });
+    } catch (error) {
+      logger.logError(debug, 'WHOIS data', error);
+    }
 
-  if (!sslData) {
-    throw new Error(
-      "Could not fetch SSL data for domain " +
-        domain +
-        ". The SSL certificate may be invalid or the domain may not support HTTPS."
-    );
+    // Then fetch DNS data
+    logger.logInfo(debug, 'Getting DNS data', `for domain: ${formattedDomain}`);
+    try {
+      result.dnsData = await getDnsData(formattedDomain);
+    } catch (error) {
+      logger.logError(debug, 'DNS data', error);
+    }
+
+    // Finally fetch SSL and server data
+    logger.logInfo(debug, 'Getting SSL and server data', `for domain: ${formattedDomain}`);
+    try {
+      const [sslData, serverData, httpStatus] = await Promise.all([
+        getSslData(formattedDomain, mergedOptions),
+        getServerData(formattedDomain, mergedOptions),
+        getHttpStatus(formattedDomain, mergedOptions),
+      ]);
+      result.sslData = sslData;
+      result.serverData = serverData;
+      result.httpStatus = httpStatus;
+    } catch (error) {
+      logger.logError(debug, 'SSL/server data', error);
+    }
+
+    return result;
+  } catch (error) {
+    logger.logError(debug, 'domain info', error);
+    throw error;
   }
-
-  return { sslData, serverData, dnsData, httpStatus, whoisData };
 }
 
 /**
@@ -354,13 +364,15 @@ async function getSslData(
   options: RequestOptions = DEFAULT_OPTIONS
 ): Promise<SslData> {
   return new Promise((resolve, reject) => {
+    // First try HTTPS with modern protocols
     const req = https
       .request(
         `https://${domain}`,
         {
-          method: "HEAD",
+          method: 'HEAD',
           timeout: options.timeout,
           headers: options.headers || {},
+          secureProtocol: 'TLSv1_2_method', // Default to TLS 1.2
         },
         (res) => {
           const socket = res.socket as CustomSocket;
@@ -369,8 +381,101 @@ async function getSslData(
           socket.destroy();
         }
       )
-      .on("error", (error) => {
-        reject(error);
+      .on('error', (error: NodeJS.ErrnoException) => {
+        // If HTTPS fails with EPROTO, try with older protocols
+        if (error.code === 'EPROTO') {
+          const legacyReq = https
+            .request(
+              `https://${domain}`,
+              {
+                method: 'HEAD',
+                timeout: options.timeout,
+                headers: options.headers || {},
+                secureProtocol: 'TLSv1_method', // Try TLS 1.0
+              },
+              (legacyRes) => {
+                const socket = legacyRes.socket as CustomSocket;
+                const cert = socket.getPeerCertificate(true);
+                resolve(extractSslData(cert));
+                socket.destroy();
+              }
+            )
+            .on('error', (legacyError: NodeJS.ErrnoException) => {
+              // If both modern and legacy protocols fail, try HTTP
+              if (legacyError.code === 'EPROTO' || legacyError.code === 'ECONNREFUSED') {
+                const httpReq = http
+                  .request(
+                    `http://${domain}`,
+                    {
+                      method: 'HEAD',
+                      timeout: options.timeout,
+                      headers: options.headers || {},
+                    },
+                    (httpRes) => {
+                      // For HTTP, return a basic SSL data object indicating no SSL
+                      resolve({
+                        subject: {},
+                        issuer: {},
+                        valid: false,
+                        validFrom: 0,
+                        validTo: 0,
+                        details: {
+                          subject: domain,
+                          issuer: 'No SSL Certificate',
+                          validFrom: new Date(0),
+                          validTo: new Date(0),
+                        },
+                      });
+                      httpRes.socket?.destroy();
+                    }
+                  )
+                  .on('error', (httpError: NodeJS.ErrnoException) => {
+                    reject(httpError);
+                  });
+
+                httpReq.end();
+              } else {
+                reject(legacyError);
+              }
+            });
+
+          legacyReq.end();
+        } else if (error.code === 'ECONNREFUSED') {
+          // If connection refused, try HTTP
+          const httpReq = http
+            .request(
+              `http://${domain}`,
+              {
+                method: 'HEAD',
+                timeout: options.timeout,
+                headers: options.headers || {},
+              },
+              (httpRes) => {
+                // For HTTP, return a basic SSL data object indicating no SSL
+                resolve({
+                  subject: {},
+                  issuer: {},
+                  valid: false,
+                  validFrom: 0,
+                  validTo: 0,
+                  details: {
+                    subject: domain,
+                    issuer: 'No SSL Certificate',
+                    validFrom: new Date(0),
+                    validTo: new Date(0),
+                  },
+                });
+                httpRes.socket?.destroy();
+              }
+            )
+            .on('error', (httpError: NodeJS.ErrnoException) => {
+              reject(httpError);
+            });
+
+          httpReq.end();
+        } else {
+          reject(error);
+        }
       });
 
     req.end();
@@ -388,17 +493,18 @@ async function getServerData(
   options: RequestOptions = DEFAULT_OPTIONS
 ): Promise<string | undefined> {
   return new Promise((resolve, reject) => {
+    // First try HTTPS
     const req = https
       .request(
         `https://${domain}`,
         {
-          method: "HEAD",
+          method: 'HEAD',
           timeout: options.timeout,
           headers: options.headers || {},
           agent: false, // Disable connection pooling
         },
         (res) => {
-          const serverHeaderValue = res.headers["server"];
+          const serverHeaderValue = res.headers['server'];
           const result = Array.isArray(serverHeaderValue)
             ? serverHeaderValue[0]
             : serverHeaderValue;
@@ -411,8 +517,40 @@ async function getServerData(
           resolve(result);
         }
       )
-      .on("error", (error) => {
-        reject(error);
+      .on('error', (error: NodeJS.ErrnoException) => {
+        // If HTTPS fails, try HTTP
+        if (error.code === 'EPROTO' || error.code === 'ECONNREFUSED') {
+          const httpReq = http
+            .request(
+              `http://${domain}`,
+              {
+                method: 'HEAD',
+                timeout: options.timeout,
+                headers: options.headers || {},
+                agent: false, // Disable connection pooling
+              },
+              (httpRes) => {
+                const serverHeaderValue = httpRes.headers['server'];
+                const result = Array.isArray(serverHeaderValue)
+                  ? serverHeaderValue[0]
+                  : serverHeaderValue;
+
+                // Ensure socket is destroyed
+                if (httpRes.socket) {
+                  httpRes.socket.destroy();
+                }
+
+                resolve(result);
+              }
+            )
+            .on('error', (httpError) => {
+              reject(httpError);
+            });
+
+          httpReq.end();
+        } else {
+          reject(error);
+        }
       });
 
     req.end();
@@ -424,9 +562,7 @@ async function getServerData(
  * @param domain The domain to fetch the DNS data for.
  * @returns A Promise that resolves to an object containing the DNS data.
  */
-async function getDnsData(
-  domain: string
-): Promise<{
+async function getDnsData(domain: string): Promise<{
   A: string[];
   CNAME: string | null;
   TXT: string[];
@@ -498,7 +634,7 @@ function getCNameRecord(domain: string): Promise<string | null> {
   return new Promise((resolve, reject) => {
     dns.resolveCname(domain, (error, addresses) => {
       if (error) {
-        if (error.code === "ENODATA") {
+        if (error.code === 'ENODATA') {
           resolve(null);
         } else {
           reject(error);
@@ -533,9 +669,7 @@ function getTxtRecords(domain: string): Promise<string[]> {
  * @param domain The domain to fetch the MX records for.
  * @returns A Promise that resolves to an array of objects containing the MX records.
  */
-function getMxRecords(
-  domain: string
-): Promise<Array<{ exchange: string; priority: number }>> {
+function getMxRecords(domain: string): Promise<Array<{ exchange: string; priority: number }>> {
   return new Promise((resolve, reject) => {
     dns.resolveMx(domain, (error, records) => {
       if (error) {
@@ -573,7 +707,7 @@ function getSoaRecord(domain: string): Promise<dns.SoaRecord | null> {
   return new Promise((resolve, reject) => {
     dns.resolveSoa(domain, (error, record) => {
       if (error) {
-        if (error.code === "ENODATA") {
+        if (error.code === 'ENODATA') {
           resolve(null);
         } else {
           reject(error);
@@ -600,7 +734,7 @@ async function getHttpStatus(
       .request(
         `https://${domain}`,
         {
-          method: "HEAD",
+          method: 'HEAD',
           timeout: options.timeout,
           headers: options.headers || {},
           agent: false, // Disable connection pooling
@@ -616,7 +750,7 @@ async function getHttpStatus(
           resolve(statusCode);
         }
       )
-      .on("error", (error) => {
+      .on('error', (error) => {
         reject(error);
       });
 
@@ -625,4 +759,4 @@ async function getHttpStatus(
 }
 
 // Export WhoisData interface for users
-export { WhoisData } from "./src/whois";
+export { WhoisData } from './src/whois';

@@ -1,4 +1,4 @@
-import { fetchDomainInfo, RequestOptions } from "../index";
+import { fetchDomainInfo, RequestOptions } from '../index';
 
 /**
  * Advanced usage example processing multiple domains
@@ -6,23 +6,15 @@ import { fetchDomainInfo, RequestOptions } from "../index";
  */
 async function checkMultipleDomains(): Promise<void> {
   // List of domains to check
-  const domains = [
-    "google.com",
-    "github.com",
-    "example.com",
-    "microsoft.com",
-    "apple.com",
-  ];
+  const domains = ['google.com', 'github.com', 'example.com', 'microsoft.com', 'apple.com'];
 
-  console.log(
-    `Checking ${domains.length} domains for SSL and server information...\n`
-  );
+  console.log(`Checking ${domains.length} domains for SSL and server information...\n`);
 
   // Custom request options
   const options: RequestOptions = {
     timeout: 10000,
     headers: {
-      "User-Agent": "domain-info-fetcher-example/1.0",
+      'User-Agent': 'domain-info-fetcher-example/1.0',
     },
   };
 
@@ -40,26 +32,24 @@ async function checkMultipleDomains(): Promise<void> {
     results.forEach((result, index) => {
       const domain = domains[index];
 
-      if (result.status === "fulfilled" && result.value) {
+      if (result.status === 'fulfilled' && result.value) {
         const sslData = result.value.sslData;
 
         if (sslData.valid) {
           // Calculate days left until expiration
           const now = Date.now();
-          const daysLeft = Math.floor(
-            (sslData.validTo - now) / (1000 * 60 * 60 * 24)
-          );
+          const daysLeft = Math.floor((sslData.validTo - now) / (1000 * 60 * 60 * 24));
           validCerts.push({ domain, daysLeft });
         } else {
           invalidCerts.push({
             domain,
-            reason: "Certificate expired or not valid",
+            reason: 'Certificate expired or not valid',
           });
         }
-      } else if (result.status === "rejected") {
+      } else if (result.status === 'rejected') {
         errors.push({
           domain,
-          error: result.reason.message || "Unknown error",
+          error: result.reason.message || 'Unknown error',
         });
       }
     });
@@ -68,17 +58,13 @@ async function checkMultipleDomains(): Promise<void> {
     validCerts.sort((a, b) => a.daysLeft - b.daysLeft);
 
     // Display results
-    console.log("=== SSL CERTIFICATE SUMMARY ===");
+    console.log('=== SSL CERTIFICATE SUMMARY ===');
     console.log(`\n✅ Valid certificates (${validCerts.length}):`);
     if (validCerts.length > 0) {
-      console.log("\nDomain               | Days Left Until Expiration");
-      console.log("---------------------|-------------------------");
+      console.log('\nDomain               | Days Left Until Expiration');
+      console.log('---------------------|-------------------------');
       validCerts.forEach((cert) => {
-        console.log(
-          `${cert.domain.padEnd(20)} | ${cert.daysLeft
-            .toString()
-            .padStart(5)} days`
-        );
+        console.log(`${cert.domain.padEnd(20)} | ${cert.daysLeft.toString().padStart(5)} days`);
       });
     }
 
@@ -96,7 +82,7 @@ async function checkMultipleDomains(): Promise<void> {
       });
     }
   } catch (error) {
-    console.error("Global error occurred:");
+    console.error('Global error occurred:');
     if (error instanceof Error) {
       console.error(`   ${error.message}`);
     } else {
